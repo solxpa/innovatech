@@ -1,0 +1,158 @@
+# ============================================
+# docker-compose.yml - Innovatech Chile
+# Sistema de Gestión de Despachos
+# ============================================
+# Este archivo levanta todos los servicios para desarrollo local
+# Compatible con Docker Desktop y Docker Engine en EC2
+# ============================================
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # FRONTEND - React + Vite + nginx
+  # Puerto: 80 (accesible desde navegador)
+  # ==========================================
+  frontend:
+    build:
+      context: ./front_despacho
+      target: production
+    container_name: innovatech-frontend
+    ports:
+      - "80:80"
+    environment:
+      # Variables de entorno para el frontend
+      # El frontend usa proxy_pass en nginx.conf para comunicarse con los backends
+      # No necesita conocer IPs, solo el nombre del servicio Docker
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      # Montar configuración de nginx para desarrollo
+      # :ro = read-only, el contenedor no puede modificar el archivo host
+      - ./front_despacho/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+
+  # ==========================================
+  # BACKEND - Ventas Spring Boot
+  # Puerto: 8080
+  # ==========================================
+  backend-ventas:
+    build:
+      context: ./back-Ventas_SpringBoot/Springboot-API-REST
+      target: production
+    container_name: innovatech-backend-ventas
+    ports:
+      - "8080:8080"
+    environment:
+      # Spring profiles (prod activa configuración de producción)
+      - SPRING_PROFILES_ACTIVE=prod
+      # Configuración de base de datos MySQL
+      # El hostname 'mysql' es el nombre del servicio defined below
+      - DB_ENDPOINT=mysql
+      - DB_PORT=3306
+      - DB_NAME=innovatech_ventas
+      - DB_USERNAME=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD:-innovatech2025}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      # Named volume para persistencia de datos de ventas
+      # Si el contenedor se reinicia, los datos persisten
+      - ventas_data:/app
+
+  # ==========================================
+  # BACKEND - Despachos Spring Boot
+  # Puerto: 8081
+  # ==========================================
+  backend-despachos:
+    build:
+      context: ./back-Despachos_SpringBoot/Springboot-API-REST-DESPACHO
+      target: production
+    container_name: innovatech-backend-despachos
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_ENDPOINT=mysql
+      - DB_PORT=3306
+      - DB_NAME=innovatech_despachos
+      - DB_USERNAME=root
+      - DB_PASSWORD=${MYSQL_ROOT_PASSWORD:-innovatech2025}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      # Named volume para persistencia de datos de despachos
+      - despachos_data:/app
+
+  # ==========================================
+  # BASE DE DATOS - MySQL 8.0
+  # Puerto: 3306
+  # Named volume: mysql_data
+  # ==========================================
+  mysql:
+    image: mysql:8.0
+    container_name: innovatech-mysql
+    ports:
+      - "3306:3306"
+    environment:
+      # Contraseña de root (en producción usar secrets)
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-innovatech2025}
+      # Base de datos inicial (se crea si no existe)
+      - MYSQL_DATABASE=innovatech_ventas
+    healthcheck:
+      # Verificar que MySQL está aceptando conexiones
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${MYSQL_ROOT_PASSWORD:-innovatech2025}"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - app-network
+    volumes:
+      # Named volume para persistencia de datos MySQL
+      # CRÍTICO: Los datos sobreviven al reinicio del contenedor
+      # Justificación: Named volume vs bind mount
+      #   - Named volume: Docker administra el almacenamiento
+      #   - Bind mount: Depende de la estructura del filesystem del host
+      #   - En EC2, bind mount podría fallar si el path no existe
+      #   - Named volume es más portable y fácil de respaldar
+      - mysql_data:/var/lib/mysql
+
+networks:
+  # Red bridge personalizada
+  # Los contenedores se comunican por nombre de servicio
+  # frontend puede llamar a backend-ventas:8080
+  app-network:
+    driver: bridge
+
+volumes:
+  # Named volumes - administrados por Docker
+  # No dependen de la estructura del host
+  mysql_data:
+    driver: local
+  ventas_data:
+    driver: local
+  despachos_data:
+    driver: local

@@ -1,0 +1,87 @@
+# ============================================
+# docker-compose.prod.yml - Innovatech Chile (Producción AWS)
+# ============================================
+# Este archivo es para desplegar en AWS EC2
+# NOTA: No incluye MySQL (se usa AWS RDS)
+# Los backends se conectan al RDS configurado via environment variables
+# ============================================
+
+version: '3.8'
+
+services:
+  # ==========================================
+  # FRONTEND - React + Vite + nginx
+  # Puerto: 80
+  # ==========================================
+  frontend:
+    image: ${AWS_ECR_REGISTRY}/innovatech-frontend:${IMAGE_TAG:-latest}
+    container_name: innovatech-frontend
+    ports:
+      - "80:80"
+    environment:
+      - NODE_ENV=production
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # ==========================================
+  # BACKEND - Ventas Spring Boot
+  # Puerto: 8080
+  # ==========================================
+  backend-ventas:
+    image: ${AWS_ECR_REGISTRY}/innovatech-backend-ventas:${IMAGE_TAG:-latest}
+    container_name: innovatech-backend-ventas
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_ENDPOINT=${DB_ENDPOINT}
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME_VENTAS}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # ==========================================
+  # BACKEND - Despachos Spring Boot
+  # Puerto: 8081
+  # ==========================================
+  backend-despachos:
+    image: ${AWS_ECR_REGISTRY}/innovatech-backend-despachos:${IMAGE_TAG:-latest}
+    container_name: innovatech-backend-despachos
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - DB_ENDPOINT=${DB_ENDPOINT}
+      - DB_PORT=3306
+      - DB_NAME=${DB_NAME_DESPACHOS}
+      - DB_USERNAME=${DB_USERNAME}
+      - DB_PASSWORD=${DB_PASSWORD}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge

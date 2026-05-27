@@ -1,0 +1,47 @@
+# ============================================
+# Docker Ignore - Backend Despachos (Spring Boot)
+# Archivos que NO se incluyen en el build context
+# Reduces the size of the context sent to Docker daemon
+# ============================================
+
+# Git
+.git
+.gitignore
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Archivos de Maven (se regeneran durante el build)
+target/
+
+# Archivos de entorno (nunca en imagen)
+.env
+.env.local
+.env.development
+.env.production
+
+# Documentación (no necesaria en producción)
+*.md
+LICENSE
+CONTRIBUTING.md
+
+# Archivos de pruebas
+src/test/
+*.test.java
+
+# Archivos de configuración de build (no necesarios en producción)
+!.mvn/wrapper/maven-wrapper.jar
+
+# Misc
+*.tar.gz
+*.tgz
+*.zip

@@ -1,0 +1,62 @@
+# ============================================
+# Docker Ignore - Frontend (React + Vite)
+# Archivos que NO se incluyen en el build context
+# Reduces the size of the context sent to Docker daemon
+# ============================================
+
+# Git
+.git
+.gitignore
+
+# Archivos de IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Dependencias (se regeneran con npm ci)
+node_modules/
+
+# Build output (se reconstruye en cada build)
+dist/
+dist-ssr/
+build/
+
+# Archivos de entorno (nunca en imagen)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+.env*.local
+
+# Documentación (no necesaria en producción)
+*.md
+LICENSE
+CONTRIBUTING.md
+
+# Archivos de herramientas
+*.config.js
+!vite.config.js
+.eslintrc.cjs
+postcss.config.js
+tailwind.config.js
+
+# Testing
+coverage/
+.nyc_output/
+test/
+*.test.js
+
+# Misc
+*.tgz
+*.tar.gz
